@@ -1,6 +1,34 @@
 %dw 2.0
 output application/json
 
+type Coordinates = {
+	x:number,
+	y:number
+}
+
+type Moves = "up" | "down" | "right" | "left"
+
+fun getCoordinates(initial:Coordinates,direction:Moves) =
+direction match {
+	case "down" -> {
+		x: initial.x,
+		y: initial.y - 1
+	}
+	case "up" -> {
+		x: initial.x,
+		y: initial.y + 1
+	}
+	case "left" -> {
+		x: initial.x - 1,
+		y: initial.y
+	}
+	case "right" -> {
+		x: initial.x + 1,
+		y: initial.y
+	}
+	else -> initial
+}
+
 var body = payload.you.body
 var board = payload.board
 var head = body[0] // First body part is always head
@@ -18,10 +46,27 @@ var myNeckLocation = neck match {
 }
 
 // TODO: Step 1 - Don't hit walls.
-// Use information from `board` and `head` to not move beyond the game board.
+var wallPositionX = head match{
+	case head if head.x == 0 -> "left"
+	case head if head.x == board.width -> "right"
+	else -> ''
+}
 
-// TODO: Step 2 - Don't hit yourself.
-// Use information from `body` to avoid moves that would collide with yourself.
+var wallPositionY = head match{
+	case head if head.y == 0 -> "down"
+	case head if head.y == board.height -> "up"
+	else -> ''
+}
+
+// Step 2: Don't hit yourself
+
+var avoidSelf = moves map (move) -> do{
+	var newCoordinate = getCoordinates(head,move)
+	---
+	if (body contains newCoordinate)
+		move
+	else ""
+}
 
 // TODO: Step 3 - Don't collide with others.
 // Use information from `payload` to prevent your Battlesnake from colliding with others.
@@ -32,7 +77,7 @@ var myNeckLocation = neck match {
 
 
 // Find safe moves by eliminating neck location and any other locations computed in above steps
-var safeMoves = moves - myNeckLocation // - remove other dangerous locations
+var safeMoves = moves - myNeckLocation - wallPositionX - wallPositionY // - remove other dangerous locations
 
 // Next random move from safe moves
 var nextMove = safeMoves[randomInt(sizeOf(safeMoves))]
